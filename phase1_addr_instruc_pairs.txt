@@ -1,0 +1,8 @@
+803F0F50:   lwz r28, 0x10 (r12)
+803F0F54:   lwz r29, 0x10 (r12)
+803F0F58:   cmpw r28, r29
+803F0F5C:   beq -> 0x803F0F54
+803F0F60:   subi r3, 0xC (r12)
+803F0F64:   li r4, 0x20
+803F0F68:   bl -> 0x80003374
+803F0F6C:   b -> 0x803F0F34
