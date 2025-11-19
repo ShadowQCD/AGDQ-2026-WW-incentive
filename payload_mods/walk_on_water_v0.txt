@@ -1,0 +1,46 @@
+########################################################################################
+# Walk on water (will want to edit later to only trigger when water boots are equipped)
+########################################################################################
+
+# Injection hook into dBgS_Acch::GroundCheck 
+800A2F7C:   4BF61094    # bl -> 0x80004010
+
+# Injected code (stored in unused region of memory, may relocate)
+80004010:   2C070003    # cmpwi r7, 3           ; check if surface type == 3 (water)
+80004014:   C01EFFA0    # lfs f0, -0x60 (r30)   ; load the per-actor override ground height
+80004018:   4182000C    # beq -> 0x80004024     ; if r7==3 jump to the water-handling branch
+
+8000401C:   C01F008C    # lfs f0, 0x008C (r31)  ; default path: load normal ground sample
+80004020:   4809EF60    # b -> 0x800A2F80       ; return to original GroundCheck continuation
+
+# Water-handling branch
+80004024:   FC16A840    # fcmpo cr0, f22, f21   ; compare f22 vs f21 (test the "sentinel" state, defined below)
+80004028:   C2DEFFA4    # lfs f22, -0x5C (r30)  ; load per-actor nearby float (may be sentinel)
+8000402C:   4182FFF0    # beq -> 0x8000401C     ; if f22==f21 go back to default path (don’t override)
+80004030:   4809EF54    # b -> 0x800A2F84       ; else return to a different continuation (using the override)
+
+########################################################################################
+
+# Injection hook into daPy_lk_c::changeSwimProc
+8013D020:   4BEC7028    # b -> 0x80004048 (from daPy_lk_c::changeSwimProc)
+
+# Injected code (may relocate)
+80004048:   281E5787    # cmplwi r30, 0x5787
+8000404C:   4081001C    # ble -> 0x80004068     ; skip override for some r30 values (a guard)
+
+80004050:   FC010040    # fcmpo cr0, f1, f0     ; compare actor height (f1) vs water (f0)
+80004054:   4080000C    # bge -> 0x80004060     ; if actor >= water -> go to branch A
+
+80004058:   D2BEFFA0    # stfs f21, -0x60 (r30) ; store f21 into -0x60 (override ground height)
+8000405C:   4800000C    # b -> 0x80004068
+
+80004060:   C2DEFF9C    # lfs f22, -0x64 (r30)  ; load "sentinel" float value (defined below)
+80004064:   D03EFFA0    # stfs f1, -0x60 (r30)  ; store f1 into -0x60 (alternate override)
+
+80004068:   EC210028    # fsubs f1, f1, f0      ; continue original swim logic
+8000406C:   48138FB8    # b -> 0x8013D024       ; return to original function flow
+
+########################################################################################
+# Constant "sentinel" float value (stored in unused tmp bits, may relocate)
+803C5E44:   04071987    # tiny positive float, used above 
+
