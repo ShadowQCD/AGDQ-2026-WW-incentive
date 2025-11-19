@@ -18,7 +18,7 @@ PAD2_addr = 0x803F0F3C  # controller 2 C/LR data address (also r12)
 PAD3_addr = 0x803F0F44  # controller 3 C/LR data address
 PAD4_addr = 0x803F0F4C  # controller 4 C/LR data address
 
-payload_folder = Path.cwd() / "main_payload"
+payload_folder = Path.cwd() / "payload_mods"
 phase1_bin_file = "phase1.bin"
 phase2_bin_file = "phase2.bin"
 
@@ -166,7 +166,7 @@ def run_phase_1():
         phase1_input_bytes = f.read()
 
     phase1_instruc_list = [phase1_input_bytes[i:i+4] for i in range(0, len(phase1_input_bytes), 4)]
-    print(len(phase1_instruc_list))
+    #print(len(phase1_instruc_list))
     for phase1_instruc in phase1_instruc_list:
         #print(phase1_instruc)
         my_DME_write(PAD2_addr, phase1_instruc, pause=0.001, Nreps=phase1_Nreps)
