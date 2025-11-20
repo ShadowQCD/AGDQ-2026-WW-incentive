@@ -227,7 +227,7 @@ def phase1_get_instrucs_for_write(addr_target, hex_to_write, r12=0x803F0F3C):
 
     
 # Convert a list of (address, instruction) pairs to write during phase 1 into a list of PAD2 instructions (in ASM/hex/bytes) to write with DME
-def phase1_get_PAD2_instruction_list(addr_instruc_pairs, r12=0x803F0F3C, ks=None):
+def phase1_get_PAD2_instrucs_for_writes(addr_instruc_pairs, r12=0x803F0F3C, ks=None):
     if ks == None:
         ks = Ks(KS_ARCH_PPC, KS_MODE_PPC64)
     PAD2_instruc_list = []
@@ -241,9 +241,20 @@ def phase1_get_PAD2_instruction_list(addr_instruc_pairs, r12=0x803F0F3C, ks=None
     return PAD2_instruc_list #, PAD2_hex_list, PAD2_bytes_list
 
 
+def phase1_final_PAD2_instrucs():
+    PAD2_instrucs = [
+        'subi r3, 0xC (r12)',
+        'li r4, 0x40',
+        'bl -> 0x80003374',
+        'b -> 0x803F0F50'
+        #'nop'
+    ]
+    return PAD2_instrucs
+
 # Create phase 1 binary file from list of (address, instruction) pairs
 def phase1_create_bin(phase1_addr_instruc_pairs, phase1_bytes_file, r12=0x803F0F3C, ks=None):
-    PAD2_instruc_list = phase1_get_PAD2_instruction_list(phase1_addr_instruc_pairs, r12=r12, ks=ks)
+    PAD2_instruc_list = phase1_get_PAD2_instrucs_for_writes(phase1_addr_instruc_pairs, r12=r12, ks=ks)
+    PAD2_instruc_list += phase1_final_PAD2_instrucs()
     with open(phase1_bytes_file,'wb') as f:
         for PAD2_instruc in PAD2_instruc_list:
             PAD2_instruc_bytes = get_ASM_encoding(PAD2_instruc, addr=0x803F0F3C, ks=ks, output_type='bytes')

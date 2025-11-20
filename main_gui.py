@@ -19,6 +19,8 @@ PAD3_addr = 0x803F0F44  # controller 3 C/LR data address
 PAD4_addr = 0x803F0F4C  # controller 4 C/LR data address
 
 payload_folder = Path.cwd() / "payload_mods"
+
+phase1_AI_file = "phase1_addr_instruc_pairs.txt"
 phase1_bin_file = "phase1.bin"
 phase2_bin_file = "phase2.bin"
 
@@ -26,8 +28,7 @@ nop         = bytes.fromhex("60000000") # "no operation" instruction
 button_nop  = bytes.fromhex("10808080") # pscmpu1 cr1, p0, p16 (basically a nop; only affects CR1 which nothing should read from. controller inputs are Start + neutral gray stick)
 icbi_r12    = bytes.fromhex("7C0067AC") # icbi r0, r12 ; invalidates instruction cache at r12=0x803F0F3C (pad 2 C/LR address)
 b_42        = bytes.fromhex("4BFFFFF0") # branch backwards 0x10 bytes (pad 4 -> pad 2)
-b_cache2    = bytes.fromhex("48000014") # branch forwards 0x14 bytes (pad 2 -> phase 2 caching)
-b_safety4   = bytes.fromhex("4BE24718") # branch from pad 4 -> 0x80215664 (end of dMsg_Delete)
+b_4safety   = bytes.fromhex("4BE24718") # branch from pad 4 -> 0x80215664 (end of dMsg_Delete)
 
 ks = Ks(KS_ARCH_PPC, KS_MODE_PPC64)
 
@@ -116,6 +117,13 @@ def rebuild_phase2_bin():
 
     log(f"{phase2_bin_file} regenerated.\n")
 
+########################################################################
+# Create phase 1 binary file from file of (address, instruction) pairs
+########################################################################
+def rebuild_phase1_bin():
+    phase1_AI_pairs = HF.get_addr_value_pairs_from_files(phase1_AI_file, input_type='ASM', output_type='ASM', ks=ks)
+    HF.phase1_create_bin(phase1_AI_pairs, phase1_bin_file, ks=ks)
+    log(f"{phase1_bin_file} regenerated.\n")
 
 
 ############################################################
@@ -162,6 +170,7 @@ def run_phase_1():
     ################################################################################
 #def run_phase_1():
     #log("Running Phase 1...")
+    
     with open(phase1_bin_file, "rb") as f:
         phase1_input_bytes = f.read()
 
@@ -177,8 +186,7 @@ def run_phase_1():
     ###########################################################
 #def run_phase_15():
     #log("Running Phase 1.5...")
-    my_DME_write(PAD2_addr, b_cache2, Nreps=phase1_Nreps) # have pad 2 C/LR data branch to phase 2 caching so that pad 3-4 updates work (in phase 1, only pad 2's instruction cache gets refreshed)
-
+  
     my_DME_write(PAD3_addr, nop, Nreps=phase1_Nreps)      # clear pad 3 C/LR data (icbi r0, r12) to remove phase 1 cache management 
     my_DME_write(PAD4_addr, nop, Nreps=phase1_Nreps)      # clear pad 4 C/LR data (b->0x803F0F3C) to remove branch to pad 2
     my_DME_write(PAD2_addr, nop, Nreps=phase1_Nreps)      # clear pad 2 C/LR data
@@ -207,18 +215,22 @@ def run_phase_3():
     log("Running Phase 3...")
     # cleanup TBD; could zero out all addresses in phase1_AI_file but doesn't seem necessary
     # Branch to safety to resume game
-    DME.write_bytes(PAD4_addr, b_safety4)   # 0x803F0F4C: b -> 0x80215664
+    DME.write_bytes(PAD4_addr, b_4safety)   # 0x803F0F4C: b -> 0x80215664
     log("Phase 3 complete.\n")
 
-############################################################
+
+
+
+############################################################################
+############################################################################
 # TKINTER GUI LAYOUT
-############################################################
+############################################################################
+############################################################################
 root = tk.Tk()
 root.title("Wind Waker ACE Controller Payload GUI")
 root.configure(bg=BG)
-
 ############################################################
-# Hook to Dolphin Button
+# 'Hook to Dolphin' Button
 ############################################################
 hook_frame = tk.Frame(root, bg=BG)
 hook_frame.pack(padx=10, pady=5, fill="x")
@@ -233,6 +245,7 @@ hook_btn = tk.Button(
     # activeforeground=FG
 )
 hook_btn.pack()
+
 ############################################################
 # Phase Buttons
 ############################################################
@@ -253,7 +266,7 @@ for b in (btn_m1, btn_0, btn_1, btn_2, btn_3):
 
 
 ############################################################
-# Payload selector frame
+# Mods selector frame with 'Regenerate phase2.bin' button
 ############################################################
 files_frame = tk.LabelFrame(root, text="Main Payload Files", padx=10, pady=10, bg=BG, fg=FG)
 files_frame.pack(padx=10, pady=10, fill="both")
@@ -268,6 +281,11 @@ for f in payload_files:
 regen_btn = tk.Button(files_frame, text=f"Regenerate {phase2_bin_file}", command=rebuild_phase2_bin)
 regen_btn.pack(pady=5)
 
+#####################################
+# 'Regenerate phase1.bin' button
+#####################################
+# regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase1_bin_file}", command=rebuild_phase1_bin)
+# regen1_btn.pack(side='right')
 
 ############################################################
 # Log output widget
@@ -279,6 +297,7 @@ log_box = tk.Text(log_frame, height=15, bg="#666666", fg="#26FF13")
 log_box.pack(fill="both", expand=True)
 
 #log("GUI Ready.")
+log("Make sure ports 2-4 are set to 'None' in Dolphin controller settings.\n")
 log("While game is running, click 'Hook to Dolphin' to begin.\n")
 
 root.mainloop()
