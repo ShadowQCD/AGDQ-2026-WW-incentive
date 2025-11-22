@@ -2,6 +2,10 @@
 # Walk on water (will want to edit later to only trigger when water boots are equipped)
 ########################################################################################
 
+# for adding the "water boots active" check, maybe use daPy_lk_c::checkSetItemTrigger(pLink, 0x2B)?
+
+
+
 # Put injection hook in dBgS_Acch::GroundCheck 
 800A2F7C:   4BF61094    # bl -> 0x80004010
 
